@@ -246,7 +246,7 @@ SEED_FLAGS = [
     ("refund_self_service", "Self-service refunds",
      "Allows customers to request refunds from the help centre.", "staging", 0, 10, 14),
     ("dark_mode_dashboard", "Dark mode dashboard",
-     "Dark theme for the merchant dashboard.", "staging", 1, 100, 20),
+     "Dark theme for this platform's own internal UI.", "staging", 0, 100, 20),
     ("fraud_score_v2", "Fraud score v2",
      "Shadow-scores transactions with the v2 fraud model.", "production", 0, 5, 27),
 ]

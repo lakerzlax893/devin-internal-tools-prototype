@@ -6,7 +6,7 @@
   <title>{% block title %}Internal Tools{% endblock %} · Internal Tools Platform</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body>
+<body{% if dark_mode %} class="dark"{% endif %}>
   <header class="topbar">
     <a class="brand" href="/">Internal Tools Platform <span class="poc">PoC</span></a>
     {% if user %}
@@ -15,6 +15,7 @@
       <a href="/kyc" class="{{ 'active' if active == 'kyc' }}">KYC queue</a>
       <a href="/refunds" class="{{ 'active' if active == 'refunds' }}">Refunds</a>
       <a href="/flags" class="{{ 'active' if active == 'flags' }}">Feature flags</a>
+      <a href="/preview" class="{{ 'active' if active == 'preview' }}">Preview</a>
       <a href="/audit" class="{{ 'active' if active == 'audit' }}">Audit log</a>
     </nav>
     <div class="userbox">

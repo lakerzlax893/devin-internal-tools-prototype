@@ -14,7 +14,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app import auth
 from app.auth import NotAuthenticated, current_user
 from app.db import get_db, init_db
-from app.routers import admin, flags, kyc, refunds
+from app.routers import admin, flags, kyc, preview, refunds
 from app.templating import render
 
 BANNER_FLAG_KEY = "homepage_announcement"
@@ -59,6 +59,7 @@ app.include_router(auth.router)
 app.include_router(kyc.router)
 app.include_router(refunds.router)
 app.include_router(flags.router)
+app.include_router(preview.router)
 app.include_router(admin.router)
 
 

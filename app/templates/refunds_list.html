@@ -9,6 +9,22 @@
   <div class="stat card"><div class="stat-label">Total paid</div><div class="stat-value" data-testid="total-paid">{{ summary.total_paid|dollars }}</div></div>
   <div class="stat card"><div class="stat-label">Pending refunds</div><div class="stat-value" data-testid="pending-count">{{ summary.pending_count }}</div></div>
 </div>
+{% if self_service %}
+<details class="card self-service" data-testid="self-service-form" open>
+  <summary><strong>New refund request (self-service simulation)</strong> <span class="muted small">— shown because flag <code>refund_self_service</code> is ON</span></summary>
+  <form method="post" action="/refunds/new" class="ss-form">
+    <label>Customer name <input name="customer_name" required maxlength="120"></label>
+    <label>Email <input name="email" type="email" required maxlength="160"></label>
+    <label>Amount (USD) <input name="amount" type="number" min="0.01" max="10000" step="0.01" required></label>
+    <label>Reason
+      <select name="reason" required>{% for r in reasons %}<option>{{ r }}</option>{% endfor %}</select>
+    </label>
+    <button type="submit" class="btn btn-primary">Submit request</button>
+  </form>
+</details>
+{% else %}
+<p class="muted small" data-testid="self-service-disabled">Self-service refund requests are currently disabled.</p>
+{% endif %}
 {{ status_filters('/refunds', statuses, status, counts) }}
 <table class="table">
   <thead><tr><th>#</th><th>Customer</th><th class="num">Amount</th><th>Reason</th><th>Status</th><th>Requested</th><th>Transaction ref</th></tr></thead>

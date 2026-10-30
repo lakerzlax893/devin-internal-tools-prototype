@@ -2,6 +2,7 @@
 {% block title %}Feature flags{% endblock %}
 {% block content %}
 <h1>Feature-flag admin</h1>
+<p class="muted small">This page is the control plane: it records each flag. Pages that read a flag at request time are the data plane — see each flag's <strong>Controls</strong> line.</p>
 {% if not is_admin %}
 <div class="note" data-testid="readonly-note">Read-only view: feature-flag changes are admin-only. You are signed in as a {{ user.role }}.</div>
 {% endif %}
@@ -13,7 +14,8 @@
   {% for f in flags %}
   <tr>
     <td><code>{{ f.key }}</code></td>
-    <td>{{ f.name }}<div class="muted small">{{ f.description }}</div></td>
+    <td>{{ f.name }}<div class="muted small">{{ f.description }}</div>
+      {% set ctl = controls.get(f.key, not_wired) %}<div class="controls small {{ 'controls-none' if ctl == not_wired }}" data-testid="controls-{{ f.key }}"><strong>Controls:</strong> {{ ctl }}</div></td>
     <td><span class="badge env-{{ f.environment }}">{{ f.environment }}</span></td>
     <td>{% if f.enabled %}<span class="badge flag-on">ON</span>{% else %}<span class="badge flag-off">OFF</span>{% endif %}</td>
     <td class="num">{{ f.rollout_percent }}%</td>
