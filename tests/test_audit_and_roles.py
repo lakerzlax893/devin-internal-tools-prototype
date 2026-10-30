@@ -238,3 +238,73 @@ def test_reject_allowed_while_checks_incomplete(client, db_file):
     r = client.post(f"/kyc/{case['id']}/action", data={"action": "reject"}, follow_redirects=False)
     assert r.status_code == 303
     assert kyc_case(db_file, case["id"])["status"] == "rejected"
+
+
+# Feature flags wired to visible behaviour (data plane).
+def set_flag(client, db_file, key, enabled):
+    flag = query(db_file, "SELECT * FROM feature_flags WHERE key = ?", (key,))[0]
+    r = client.post(f"/flags/{flag['id']}/update",
+                    data={"enabled": "1" if enabled else "0", "rollout_percent": str(flag["rollout_percent"])},
+                    follow_redirects=False)
+    assert r.status_code == 303
+
+
+def test_preview_checkout_panel_follows_flag(client, db_file):
+    login(client, ADMIN)
+    assert query(db_file, "SELECT enabled FROM feature_flags WHERE key = 'new_checkout_flow'")[0]["enabled"] == 1
+    page = client.get("/preview").text
+    assert "New checkout" in page and "Classic checkout" not in page
+
+    set_flag(client, db_file, "new_checkout_flow", False)
+    page = client.get("/preview").text
+    assert "Classic checkout" in page and "New checkout" not in page
+    assert "Served by flag <code>new_checkout_flow</code> — OFF" in page
+
+
+def test_preview_requires_login(client):
+    r = client.get("/preview", follow_redirects=False)
+    assert r.status_code in (302, 303, 307) and r.headers["location"] == "/login"
+
+
+def test_refund_self_service_is_gated_by_flag(client, db_file):
+    login(client, ADMIN)
+    form = {"customer_name": "Test Customer", "email": "test@example.com", "amount": "12.34",
+            "reason": "Billing error"}
+    refunds_before = len(query(db_file, "SELECT id FROM refunds"))
+    page = client.get("/refunds").text
+    assert "Self-service refund requests are currently disabled." in page and 'action="/refunds/new"' not in page
+
+    r = client.post("/refunds/new", data=form, follow_redirects=False)
+    assert r.status_code == 403
+    assert len(query(db_file, "SELECT id FROM refunds")) == refunds_before
+    assert query(db_file, "SELECT id FROM audit_log WHERE action = 'created'") == []
+
+    set_flag(client, db_file, "refund_self_service", True)
+    assert 'action="/refunds/new"' in client.get("/refunds").text
+    r = client.post("/refunds/new", data=form, follow_redirects=False)
+    assert r.status_code == 303
+    new = query(db_file, "SELECT * FROM refunds ORDER BY id DESC LIMIT 1")[0]
+    assert (new["customer_name"], new["amount_cents"], new["status"]) == ("Test Customer", 1234, "pending")
+    assert new["transaction_ref"] == "TXN-DEMO-0001"
+    assert len(query(db_file, "SELECT id FROM refunds")) == refunds_before + 1
+    entries = audit_for(db_file, "refund", new["id"])
+    assert len(entries) == 1
+    assert (entries[0]["module"], entries[0]["action"], entries[0]["after_value"]) == ("refunds", "created", "pending")
+
+
+def test_dark_mode_flag_switches_theme(client, db_file):
+    login(client, ADMIN)
+    assert '<body class="dark">' not in client.get("/flags").text
+    set_flag(client, db_file, "dark_mode_dashboard", True)
+    assert '<body class="dark">' in client.get("/flags").text
+    assert '<body class="dark">' in client.get("/").text
+    set_flag(client, db_file, "dark_mode_dashboard", False)
+    assert '<body class="dark">' not in client.get("/flags").text
+
+
+def test_flags_page_shows_controls_line(client):
+    login(client, REVIEWER)
+    page = client.get("/flags").text
+    assert page.count("<strong>Controls:</strong>") == 7
+    assert "Not wired in this prototype — recorded only" in page
+    assert "Refunds page: self-service request form" in page

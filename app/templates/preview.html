@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Customer experience preview{% endblock %}
+{% macro served_by(f) -%}
+<p class="muted small served-by">Served by flag <code>{{ f.key }}</code> — {% if f.missing %}flag not found, treated as OFF{% else %}{{ 'ON' if f.on else 'OFF' }}, rollout {{ f.rollout }}%{% endif %}</p>
+{%- endmacro %}
+{% block content %}
+<div class="title-row">
+  <h1>Customer experience preview <span class="sim-tag">simulation</span></h1>
+  <span class="badge fraud-badge {{ 'fraud-v2' if fraud.on else 'fraud-v1' }}" data-testid="fraud-badge">Fraud scoring: {{ 'v2 (shadow)' if fraud.on else 'v1' }}</span>
+</div>
+<p class="sim-note">A mock customer/merchant surface for demonstrating feature flags — not a real customer product. Each panel below is chosen by the current flag row, read from the database on this request. Rollout % is recorded for the flag; this preview honours on/off only.</p>
+
+<div class="panel-grid">
+  <section class="card panel" data-testid="checkout-panel">
+    {% if checkout.on %}
+    <h2>New checkout</h2>
+    <p>Redesigned one-page checkout: saved payment methods, address autocomplete, and a single confirmation step.</p>
+    <form onsubmit="return false"><button type="submit" class="btn btn-primary">Pay now</button> <span class="muted small">(dummy button — submits nothing)</span></form>
+    {% else %}
+    <h2>Classic checkout</h2>
+    <p>Legacy three-step checkout: cart review, shipping and payment details, then order confirmation.</p>
+    {% endif %}
+    {{ served_by(checkout) }}
+  </section>
+
+  <section class="card panel" data-testid="payouts-panel">
+    {% if payouts.on %}
+    <h2>Instant payouts available</h2>
+    <p>Eligible merchants can request same-day payout.</p>
+    {% else %}
+    <h2>Standard payouts</h2>
+    <p>Funds arrive in 2–3 business days.</p>
+    {% endif %}
+    {{ served_by(payouts) }}
+  </section>
+</div>
+
+<section class="card panel panel-spaced" data-testid="fraud-panel">
+  <h2>Fraud scoring: {{ 'v2 (shadow)' if fraud.on else 'v1' }}</h2>
+  <p class="small">{% if fraud.on %}Shadow scoring: the v2 model scores each transaction alongside v1 for comparison; it does not block anything.{% else %}Transactions are scored by the v1 model only.{% endif %}</p>
+  {{ served_by(fraud) }}
+</section>
+{% endblock %}

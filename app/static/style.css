@@ -134,3 +134,25 @@ input:focus, textarea:focus, select:focus { outline: 2px solid #b8c6f5; border-c
   border: 1px solid #f3d9a4; padding: 1px 7px; border-radius: 999px; vertical-align: middle; }
 .sim-note { background: #fff7e6; border: 1px solid #f3d9a4; color: #7a5310; padding: 0.55rem 0.8rem; border-radius: 6px; font-size: 0.85rem; }
 .sim-inline { font-size: 0.85rem; color: #7a5310; margin: 0 0 0.6rem; }
+
+/* Feature-flag data plane: preview page, refunds self-service form, flag controls line. */
+.controls { margin-top: 0.25rem; color: var(--primary); }
+.controls-none { color: var(--muted); font-style: italic; }
+.served-by { margin: 0.6rem 0 0; }
+.panel-spaced { margin-top: 1rem; }
+.fraud-badge { font-size: 0.85rem; }
+.fraud-v2 { background: #ece8fb; color: #4b2fa8; }
+.fraud-v1 { background: #eef0f4; color: #4a5263; }
+.self-service { margin-bottom: 1rem; padding: 0.8rem 1.1rem; }
+.self-service summary { cursor: pointer; }
+.ss-form { display: flex; flex-wrap: wrap; gap: 0.7rem; align-items: flex-end; margin-top: 0.7rem; }
+.ss-form label { display: flex; flex-direction: column; font-size: 0.85rem; gap: 0.2rem; }
+
+/* Dark theme, switched on by the dark_mode_dashboard flag (body.dark in base.html). */
+body.dark { --bg: #0f1320; --surface: #1a2033; --text: #e4e7ef; --muted: #9aa3b8; --border: #2c3450; --primary: #7d97ff; }
+body.dark .topbar { background: #070a14; }
+body.dark .table th { background: #20273d; }
+body.dark .table tbody tr:hover { background: #222a42; }
+body.dark code { background: #262e47; color: #e4e7ef; }
+body.dark input, body.dark textarea, body.dark select { background: #121727; color: var(--text); }
+body.dark .btn:not(.btn-primary):not(.btn-success):not(.btn-danger):not(.btn-ghost):hover { background: #222a42; }

@@ -14,6 +14,18 @@ router = APIRouter(prefix="/flags")
 
 TRUTHY = {"1", "true", "on", "yes"}
 
+# What each flag changes in this app (the data plane). Shown on the flags page.
+FLAG_CONTROLS = {
+    "homepage_announcement": "Home page announcement banner",
+    "new_checkout_flow": "Preview page: new vs classic checkout",
+    "instant_payouts": "Preview page: instant vs standard payouts panel",
+    "fraud_score_v2": "Preview page: fraud-scoring badge (shadow)",
+    "refund_self_service": "Refunds page: self-service request form",
+    "dark_mode_dashboard": "This platform's own theme (light/dark)",
+    "kyc_auto_approve_low_risk": "Not wired in this prototype — recorded only",
+}
+NOT_WIRED = "Not wired in this prototype — recorded only"
+
 
 def describe(enabled: int | bool, rollout: int) -> str:
     return f"enabled={'true' if enabled else 'false'}, rollout={rollout}"
@@ -23,7 +35,7 @@ def describe(enabled: int | bool, rollout: int) -> str:
 def flags_list(request: Request, user: dict = Depends(current_user), db: sqlite3.Connection = Depends(get_db)):
     flags = db.execute("SELECT * FROM feature_flags ORDER BY environment, key").fetchall()
     return render(request, "flags_list.html", user=user, active="flags", flags=flags,
-                  is_admin=user["role"] == "admin")
+                  is_admin=user["role"] == "admin", controls=FLAG_CONTROLS, not_wired=NOT_WIRED)
 
 
 @router.post("/{flag_id}/update")
