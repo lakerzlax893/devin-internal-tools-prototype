@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "_filters.html" import status_filters %}
+{% block title %}Refunds dashboard{% endblock %}
+{% block content %}
+<h1>Refunds dashboard</h1>
+<div class="stats">
+  <div class="stat card"><div class="stat-label">Total requested</div><div class="stat-value" data-testid="total-requested">{{ summary.total_requested|dollars }}</div></div>
+  <div class="stat card"><div class="stat-label">Total approved <span class="muted small">(approved + paid)</span></div><div class="stat-value" data-testid="total-approved">{{ summary.total_approved|dollars }}</div></div>
+  <div class="stat card"><div class="stat-label">Total paid</div><div class="stat-value" data-testid="total-paid">{{ summary.total_paid|dollars }}</div></div>
+  <div class="stat card"><div class="stat-label">Pending refunds</div><div class="stat-value" data-testid="pending-count">{{ summary.pending_count }}</div></div>
+</div>
+{{ status_filters('/refunds', statuses, status, counts) }}
+<table class="table">
+  <thead><tr><th>#</th><th>Customer</th><th class="num">Amount</th><th>Reason</th><th>Status</th><th>Requested</th><th>Transaction ref</th></tr></thead>
+  <tbody>
+  {% for r in refunds %}
+  <tr>
+    <td>{{ r.id }}</td>
+    <td><a href="/refunds/{{ r.id }}">{{ r.customer_name }}</a></td>
+    <td class="num">{{ r.amount_cents|dollars }}</td>
+    <td>{{ r.reason }}</td>
+    <td><span class="badge status-{{ r.status }}">{{ r.status|label }}</span></td>
+    <td class="nowrap">{{ r.requested_at|date }}</td>
+    <td><code>{{ r.transaction_ref }}</code></td>
+  </tr>
+  {% else %}
+  <tr><td colspan="7" class="muted">No refunds with this status.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

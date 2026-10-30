@@ -1,0 +1,30 @@
+{% macro status_filters(base, statuses, current, counts) %}
+<nav class="filters">
+  <a href="{{ base }}" class="{{ 'active' if current == 'all' }}">All <span class="count">{{ counts.get('all', 0) }}</span></a>
+  {% for s in statuses %}
+  <a href="{{ base }}?status={{ s }}" class="{{ 'active' if current == s }}">{{ s|label }} <span class="count">{{ counts.get(s, 0) }}</span></a>
+  {% endfor %}
+</nav>
+{% endmacro %}
+
+{% macro history_table(history) %}
+<h2>Audit history</h2>
+{% if history %}
+<table class="table">
+  <thead><tr><th>Time (UTC)</th><th>Actor</th><th>Action</th><th>Before → After</th><th>Comment</th></tr></thead>
+  <tbody>
+  {% for e in history %}
+  <tr>
+    <td class="nowrap">{{ e.created_at }}</td>
+    <td>{{ e.actor_email }} <span class="role role-{{ e.actor_role }}">{{ e.actor_role }}</span></td>
+    <td>{{ e.action }}</td>
+    <td><code>{{ e.before_value }}</code> → <code>{{ e.after_value }}</code></td>
+    <td>{{ e.comment or '' }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="muted">No actions recorded yet.</p>
+{% endif %}
+{% endmacro %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Home{% endblock %}
+{% block content %}
+{% if banner %}<div class="banner" data-testid="announcement-banner">{{ banner }}</div>{% endif %}
+<h1>Welcome, {{ user.name }}</h1>
+<p class="muted">Three internal tools on one shared platform: one login, one database, one audit log.</p>
+<div class="cards">
+  {% for tool in tools %}
+  <a class="card tool-card" href="{{ tool.href }}">
+    <h2>{{ tool.name }}</h2>
+    <p>{{ tool.description }}</p>
+    <div class="tool-count"><span class="num">{{ tool.count }}</span> {{ tool.count_label }}</div>
+    <span class="tool-open">Open →</span>
+  </a>
+  {% endfor %}
+</div>
+<p class="muted small">Every consequential action in these tools is recorded in the <a href="/audit">audit log</a>.</p>
+{% endblock %}

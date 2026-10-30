@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Internal Tools{% endblock %} · Internal Tools Platform</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">Internal Tools Platform <span class="poc">PoC</span></a>
+    {% if user %}
+    <nav class="mainnav">
+      <a href="/" class="{{ 'active' if active == 'home' }}">Home</a>
+      <a href="/kyc" class="{{ 'active' if active == 'kyc' }}">KYC queue</a>
+      <a href="/refunds" class="{{ 'active' if active == 'refunds' }}">Refunds</a>
+      <a href="/flags" class="{{ 'active' if active == 'flags' }}">Feature flags</a>
+      <a href="/audit" class="{{ 'active' if active == 'audit' }}">Audit log</a>
+    </nav>
+    <div class="userbox">
+      <span class="uname">{{ user.name }}</span>
+      <span class="role role-{{ user.role }}">{{ user.role }}</span>
+      <form method="post" action="/logout" class="inline">
+        <button type="submit" class="btn btn-small btn-ghost">Log out</button>
+      </form>
+    </div>
+    {% endif %}
+  </header>
+  <main class="container">
+    {% if flash %}<div class="flash flash-{{ flash.kind }}" role="status">{{ flash.message }}</div>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="footer">Proof of concept · seeded fake data only · demo authentication</footer>
+</body>
+</html>

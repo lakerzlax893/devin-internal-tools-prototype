@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Audit log{% endblock %}
+{% block content %}
+<div class="title-row">
+  <h1>Audit log</h1>
+  {% if is_admin %}
+  <a class="btn btn-primary" href="/admin/audit.csv">Download CSV</a>
+  {% else %}
+  <span class="muted small">CSV export is admin-only.</span>
+  {% endif %}
+</div>
+<nav class="filters">
+  <a href="/audit" class="{{ 'active' if module == 'all' }}">All</a>
+  {% for m in modules %}
+  <a href="/audit?module={{ m }}" class="{{ 'active' if module == m }}">{{ m|label }}</a>
+  {% endfor %}
+</nav>
+<table class="table">
+  <thead><tr><th>Time (UTC)</th><th>Actor</th><th>Module</th><th>Entity</th><th>Action</th><th>Before → After</th><th>Comment</th></tr></thead>
+  <tbody>
+  {% for e in entries %}
+  <tr>
+    <td class="nowrap">{{ e.created_at }}</td>
+    <td>{{ e.actor_email }} <span class="role role-{{ e.actor_role }}">{{ e.actor_role }}</span></td>
+    <td><span class="badge module-{{ e.module }}">{{ e.module }}</span></td>
+    <td class="nowrap">
+      {% set link = entity_links.get(e.entity_type) %}
+      {% set text = e.entity_type ~ ' #' ~ e.entity_id %}
+      {% if e.entity_type == 'feature_flag' and flag_keys.get(e.entity_id) %}{% set text = text ~ ' (' ~ flag_keys[e.entity_id] ~ ')' %}{% endif %}
+      {% if link %}<a href="{{ link.format(e.entity_id) }}">{{ text }}</a>{% else %}{{ text }}{% endif %}
+    </td>
+    <td>{{ e.action }}</td>
+    <td>{% if e.before_value is not none or e.after_value is not none %}<code>{{ e.before_value }}</code> → <code>{{ e.after_value }}</code>{% else %}<span class="muted">—</span>{% endif %}</td>
+    <td>{{ e.comment or '' }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="7" class="muted">No audit entries{% if module != 'all' %} for this module{% endif %} yet.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

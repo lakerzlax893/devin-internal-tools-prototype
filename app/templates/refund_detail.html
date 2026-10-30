@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_filters.html" import history_table %}
+{% block title %}Refund #{{ refund.id }}{% endblock %}
+{% block content %}
+<p><a href="/refunds">← Back to dashboard</a></p>
+<h1>Refund #{{ refund.id }}: {{ refund.amount_cents|dollars }} to {{ refund.customer_name }}</h1>
+<div class="detail-grid">
+  <div class="card">
+    <dl class="fields">
+      <dt>Customer</dt><dd>{{ refund.customer_name }}</dd>
+      <dt>Email</dt><dd>{{ refund.email }}</dd>
+      <dt>Amount</dt><dd>{{ refund.amount_cents|dollars }} {{ refund.currency }}</dd>
+      <dt>Reason</dt><dd>{{ refund.reason }}</dd>
+      <dt>Status</dt><dd><span class="badge status-{{ refund.status }}" data-testid="status">{{ refund.status|label }}</span></dd>
+      <dt>Requested</dt><dd>{{ refund.requested_at }} UTC</dd>
+      <dt>Transaction ref</dt><dd><code>{{ refund.transaction_ref }}</code></dd>
+    </dl>
+  </div>
+  <div class="card">
+    <h2>Take action</h2>
+    <form method="post" action="/refunds/{{ refund.id }}/action" class="stack">
+      <label>Comment (optional)
+        <textarea name="comment" rows="3" placeholder="Reason or note for the audit log"></textarea>
+      </label>
+      <div class="actions">
+        <button type="submit" name="action" value="approve" class="btn btn-success">Approve</button>
+        <button type="submit" name="action" value="deny" class="btn btn-danger">Deny</button>
+        <button type="submit" name="action" value="mark_paid" class="btn">Mark paid</button>
+      </div>
+    </form>
+  </div>
+</div>
+{{ history_table(history) }}
+{% endblock %}

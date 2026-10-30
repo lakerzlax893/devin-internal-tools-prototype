@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Feature flags{% endblock %}
+{% block content %}
+<h1>Feature-flag admin</h1>
+{% if not is_admin %}
+<div class="note" data-testid="readonly-note">Read-only view: feature-flag changes are admin-only. You are signed in as a {{ user.role }}.</div>
+{% endif %}
+<table class="table">
+  <thead>
+    <tr><th>Key</th><th>Name</th><th>Environment</th><th>Enabled</th><th class="num">Rollout</th><th>Last updated (UTC)</th>{% if is_admin %}<th>Change</th>{% endif %}</tr>
+  </thead>
+  <tbody>
+  {% for f in flags %}
+  <tr>
+    <td><code>{{ f.key }}</code></td>
+    <td>{{ f.name }}<div class="muted small">{{ f.description }}</div></td>
+    <td><span class="badge env-{{ f.environment }}">{{ f.environment }}</span></td>
+    <td>{% if f.enabled %}<span class="badge flag-on">ON</span>{% else %}<span class="badge flag-off">OFF</span>{% endif %}</td>
+    <td class="num">{{ f.rollout_percent }}%</td>
+    <td class="nowrap">{{ f.updated_at }}</td>
+    {% if is_admin %}
+    <td>
+      <form method="post" action="/flags/{{ f.id }}/update" class="flag-form">
+        <input type="hidden" name="enabled" value="{{ '0' if f.enabled else '1' }}">
+        <input type="hidden" name="rollout_percent" value="{{ f.rollout_percent }}">
+        <button type="submit" class="btn btn-small {{ 'btn-danger' if f.enabled else 'btn-success' }}">Turn {{ 'OFF' if f.enabled else 'ON' }}</button>
+      </form>
+      <form method="post" action="/flags/{{ f.id }}/update" class="flag-form">
+        <select name="enabled" aria-label="Enabled">
+          <option value="1" {{ 'selected' if f.enabled }}>ON</option>
+          <option value="0" {{ 'selected' if not f.enabled }}>OFF</option>
+        </select>
+        <input type="number" name="rollout_percent" min="0" max="100" step="1" value="{{ f.rollout_percent }}" aria-label="Rollout percent" class="pct">
+        <button type="submit" class="btn btn-small">Save</button>
+      </form>
+    </td>
+    {% endif %}
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

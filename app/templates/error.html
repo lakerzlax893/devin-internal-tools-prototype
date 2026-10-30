@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Error {{ status }}{% endblock %}
+{% block content %}
+<div class="card error-card">
+  <h1>{{ status }} — {% if status == 403 %}Forbidden{% elif status == 404 %}Not found{% elif status == 400 %}Bad request{% else %}Error{% endif %}</h1>
+  <p data-testid="error-detail">{{ detail }}</p>
+  <p><a href="javascript:history.back()">← Go back</a> · <a href="/">Home</a></p>
+</div>
+{% endblock %}

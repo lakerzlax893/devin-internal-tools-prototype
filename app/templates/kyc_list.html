@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_filters.html" import status_filters %}
+{% block title %}KYC review queue{% endblock %}
+{% block content %}
+<h1>KYC review queue</h1>
+{{ status_filters('/kyc', statuses, status, counts) }}
+<table class="table">
+  <thead><tr><th>#</th><th>Customer</th><th>Risk tier</th><th>Status</th><th>Assignee</th><th>Submitted</th></tr></thead>
+  <tbody>
+  {% for c in cases %}
+  <tr>
+    <td>{{ c.id }}</td>
+    <td><a href="/kyc/{{ c.id }}">{{ c.customer_name }}</a></td>
+    <td><span class="badge risk-{{ c.risk_tier }}">{{ c.risk_tier|label }}</span></td>
+    <td><span class="badge status-{{ c.status }}">{{ c.status|label }}</span></td>
+    <td>{{ c.assignee or '—' }}</td>
+    <td class="nowrap">{{ c.submitted_at|date }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6" class="muted">No cases with this status.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

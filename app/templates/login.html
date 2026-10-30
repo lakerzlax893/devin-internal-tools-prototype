@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<div class="login-card card">
+  <h1>Sign in</h1>
+  <p class="muted">Internal tools platform — demo environment.</p>
+  {% if error %}<div class="flash flash-error" role="alert">{{ error }}</div>{% endif %}
+  <form method="post" action="/login" class="stack">
+    <label>Email
+      <input type="email" name="email" value="{{ email or '' }}" required autofocus autocomplete="username">
+    </label>
+    <label>Password
+      <input type="password" name="password" required autocomplete="current-password">
+    </label>
+    <button type="submit" class="btn btn-primary">Sign in</button>
+  </form>
+  <div class="demo-logins">
+    <strong>Demo logins</strong>
+    <div>reviewer@example.com / demo-reviewer</div>
+    <div>admin@example.com / demo-admin</div>
+  </div>
+</div>
+{% endblock %}
