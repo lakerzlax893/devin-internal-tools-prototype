@@ -4,21 +4,28 @@
 {% block content %}
 <h1>KYC review queue</h1>
 {{ status_filters('/kyc', statuses, status, counts) }}
-<table class="table">
-  <thead><tr><th>#</th><th>Customer</th><th>Risk tier</th><th>Status</th><th>Assignee</th><th>Submitted</th></tr></thead>
+<p class="sim-inline">IDV and Screening results are <strong>simulated</strong> in this prototype — no external provider is called.</p>
+<table class="table table-dense">
+  <thead>
+    <tr><th>Applicant</th><th>Type</th><th>Risk</th><th>IDV</th><th>Screening</th><th>Docs</th><th>Status</th><th>Analyst</th><th>Submitted</th></tr>
+  </thead>
   <tbody>
   {% for c in cases %}
   <tr>
-    <td>{{ c.id }}</td>
-    <td><a href="/kyc/{{ c.id }}">{{ c.customer_name }}</a></td>
-    <td><span class="badge risk-{{ c.risk_tier }}">{{ c.risk_tier|label }}</span></td>
+    <td><a href="/kyc/{{ c.id }}">{{ c.customer_name }}</a><div class="ref">{{ c.case_ref }}</div></td>
+    <td>{{ c.entity_type|label }}</td>
+    <td class="nowrap"><span class="badge risk-{{ c.risk_tier }}">{{ c.risk_tier|label }} · {{ c.risk_score }}</span></td>
+    <td><span class="badge chk-{{ c.idv_status }}">{{ c.idv_status|label }}</span></td>
+    <td><span class="badge chk-{{ c.screening }}">{{ c.screening|label }}</span></td>
+    <td class="nowrap {{ 'docs-incomplete' if c.docs_missing }}">{{ c.docs_done }}/{{ doc_total }}</td>
     <td><span class="badge status-{{ c.status }}">{{ c.status|label }}</span></td>
     <td>{{ c.assignee or '—' }}</td>
     <td class="nowrap">{{ c.submitted_at|date }}</td>
   </tr>
   {% else %}
-  <tr><td colspan="6" class="muted">No cases with this status.</td></tr>
+  <tr><td colspan="9" class="muted">No cases with this status.</td></tr>
   {% endfor %}
   </tbody>
 </table>
+<p class="muted small">Screening shows the worse of sanctions &amp; watchlist and PEP &amp; adverse media (Review &gt; Pending &gt; Not run &gt; Clear). Docs counts checklist items verified or received (red = a requested document is missing).</p>
 {% endblock %}

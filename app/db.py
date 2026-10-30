@@ -64,13 +64,33 @@ CREATE TABLE IF NOT EXISTS users (
 
 CREATE TABLE IF NOT EXISTS kyc_cases (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    case_ref TEXT NOT NULL UNIQUE,
     customer_name TEXT NOT NULL,
     email TEXT NOT NULL,
+    entity_type TEXT NOT NULL CHECK (entity_type IN ('individual', 'business')),
+    date_of_birth TEXT,
+    nationality TEXT NOT NULL,
+    country_of_residence TEXT NOT NULL,
+    id_document_type TEXT NOT NULL,
+    id_document_last4 TEXT NOT NULL CHECK (length(id_document_last4) <= 4),
     risk_tier TEXT NOT NULL CHECK (risk_tier IN ('low', 'medium', 'high')),
+    risk_score INTEGER NOT NULL CHECK (
+        (risk_tier = 'low' AND risk_score BETWEEN 0 AND 39)
+        OR (risk_tier = 'medium' AND risk_score BETWEEN 40 AND 69)
+        OR (risk_tier = 'high' AND risk_score BETWEEN 70 AND 100)
+    ),
     status TEXT NOT NULL CHECK (status IN ('pending', 'approved', 'rejected', 'info_requested')),
     assignee TEXT,
     submitted_at TEXT NOT NULL,
-    notes TEXT
+    notes TEXT,
+    doc_government_id TEXT NOT NULL CHECK (doc_government_id IN ('verified', 'received', 'missing', 'not_requested')),
+    doc_proof_of_address TEXT NOT NULL CHECK (doc_proof_of_address IN ('verified', 'received', 'missing', 'not_requested')),
+    doc_selfie_liveness TEXT NOT NULL CHECK (doc_selfie_liveness IN ('verified', 'received', 'missing', 'not_requested')),
+    doc_source_of_funds TEXT NOT NULL CHECK (doc_source_of_funds IN ('verified', 'received', 'missing', 'not_requested')),
+    idv_status TEXT NOT NULL CHECK (idv_status IN ('clear', 'review', 'not_run', 'pending')),
+    sanctions_status TEXT NOT NULL CHECK (sanctions_status IN ('clear', 'review', 'not_run', 'pending')),
+    pep_status TEXT NOT NULL CHECK (pep_status IN ('clear', 'review', 'not_run', 'pending')),
+    checks_last_run_at TEXT
 );
 
 CREATE TABLE IF NOT EXISTS refunds (
@@ -115,27 +135,87 @@ CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_log (entity_type, entity_id
 """
 
 SEED_USERS = [
-    ("Riley Reviewer", "reviewer@example.com", "demo-reviewer", "reviewer"),
-    ("Alex Admin", "admin@example.com", "demo-admin", "admin"),
+    ("Riley Chen", "reviewer@example.com", "demo-reviewer", "reviewer"),
+    ("Alex Morgan", "admin@example.com", "demo-admin", "admin"),
 ]
 
-# (customer_name, email, risk_tier, status, assignee, days_ago, notes)
+RILEY = "Riley Chen"
+ALEX = "Alex Morgan"
+V, R, M, NR = "verified", "received", "missing", "not_requested"
+
+
+def _kyc(name, email, entity, dob, nationality, residence, doc_type, last4, tier, score, status, assignee,
+         days_ago, notes, docs, checks, checks_days_ago):
+    """One seeded KYC case. docs = (government_id, proof_of_address, selfie_liveness, source_of_funds);
+    checks = (idv, sanctions, pep); checks_days_ago = None means checks never run."""
+    return dict(customer_name=name, email=email, entity_type=entity, date_of_birth=dob, nationality=nationality,
+                country_of_residence=residence, id_document_type=doc_type, id_document_last4=last4,
+                risk_tier=tier, risk_score=score, status=status, assignee=assignee, days_ago=days_ago, notes=notes,
+                doc_government_id=docs[0], doc_proof_of_address=docs[1], doc_selfie_liveness=docs[2],
+                doc_source_of_funds=docs[3], idv_status=checks[0], sanctions_status=checks[1], pep_status=checks[2],
+                checks_days_ago=checks_days_ago)
+
+
+# All values are fake. Case refs are assigned in order: KYC-2026-0158 (first) down to KYC-2026-0145.
 SEED_KYC = [
-    ("Marisol Vantreese", "marisol.vantreese@example.net", "low", "pending", None, 1, "Standard individual account; passport uploaded."),
-    ("Dorian Okafor-Lind", "dorian.ol@example.net", "high", "pending", "Riley Reviewer", 2, "PEP screening hit on similar name; needs manual review."),
-    ("Quill & Fern Studio LLC", "ops@quillfern.example.com", "medium", "pending", None, 3, "Business account; beneficial-owner list pending verification."),
-    ("Tobias Hrenko", "t.hrenko@example.org", "medium", "info_requested", "Riley Reviewer", 5, "Proof of address older than 90 days."),
-    ("Annika Beltrán", "annika.b@example.net", "low", "approved", "Riley Reviewer", 6, "All documents verified automatically."),
-    ("Kestrel Logistics Inc", "compliance@kestrel.example.com", "high", "rejected", "Alex Admin", 8, "Registered address resolves to a virtual office; ownership unclear."),
-    ("Priya Ramaswell", "priya.ramaswell@example.org", "low", "pending", None, 9, "Selfie match score 0.97."),
-    ("Jonah Wexley-Abara", "jonah.wa@example.net", "high", "info_requested", "Alex Admin", 11, "Source-of-funds documentation requested."),
-    ("Lucía Marenco", "lucia.marenco@example.com", "medium", "approved", "Alex Admin", 13, "Driver's licence and utility bill verified."),
-    ("Bramwell Coffee Roasters", "finance@bramwell.example.com", "low", "approved", None, 16, "Low-volume merchant; standard checks passed."),
-    ("Ivo Stanchev", "ivo.stanchev@example.org", "high", "rejected", "Riley Reviewer", 19, "Document tampering suspected on ID image."),
-    ("Harriet Oduya", "harriet.oduya@example.net", "medium", "pending", None, 22, "Name mismatch between ID and bank statement (maiden name)."),
-    ("Céleste Armitage", "celeste.a@example.com", "low", "info_requested", None, 25, "ID photo blurry; re-upload requested."),
-    ("Northgate Ceramics Co", "accounts@northgate.example.com", "medium", "approved", "Riley Reviewer", 28, "Business registry match confirmed."),
+    _kyc("Marisol Vantreese", "marisol.vantreese@example.net", "individual", "1991-04-17", "Spain", "United Kingdom",
+         "Passport", "4821", "low", 18, "pending", None, 1,
+         "Standard individual account; passport and utility bill verified, low expected volume.",
+         (V, V, V, NR), ("clear", "clear", "clear"), 1),
+    _kyc("Dorian Okafor-Lind", "dorian.ol@example.net", "individual", "1978-11-02", "Nigeria", "Sweden",
+         "Passport", "7730", "high", 82, "pending", RILEY, 2,
+         "Possible PEP match on a similar name (regional official); high expected volume. Needs analyst review.",
+         (V, V, V, R), ("clear", "clear", "review"), 2),
+    _kyc("Quill & Fern Studio LLC", "ops@quillfern.example.com", "business", None, "United States", "United States",
+         "Certificate of incorporation", "19QF", "medium", 55, "pending", None, 3,
+         "Business account; beneficial-owner list pending verification. Sanctions screening not yet run.",
+         (V, R, NR, M), ("clear", "not_run", "clear"), 3),
+    _kyc("Tobias Hrenko", "t.hrenko@example.org", "individual", "1986-07-23", "Czechia", "Germany",
+         "National ID", "0394", "medium", 47, "info_requested", RILEY, 5,
+         "Proof of address older than 90 days; new document requested.",
+         (V, M, V, NR), ("clear", "clear", "clear"), 5),
+    _kyc("Annika Beltrán", "annika.b@example.net", "individual", "1995-01-30", "Argentina", "Spain",
+         "Passport", "5512", "low", 12, "approved", RILEY, 6,
+         "All documents verified; no screening hits.",
+         (V, V, V, NR), ("clear", "clear", "clear"), 6),
+    _kyc("Kestrel Logistics Inc", "compliance@kestrel.example.com", "business", None, "Cyprus", "Cyprus",
+         "Certificate of incorporation", "88KL", "high", 88, "rejected", ALEX, 8,
+         "Registered address resolves to a virtual office; ownership unclear; possible sanctions-list match on a director.",
+         (V, R, NR, M), ("clear", "review", "clear"), 8),
+    _kyc("Priya Ramaswell", "priya.ramaswell@example.org", "individual", "1989-09-12", "India", "Canada",
+         "Driver's licence", "2207", "low", 24, "pending", None, 9,
+         "Selfie match score 0.97. PEP & adverse-media screening not yet run.",
+         (V, V, V, NR), ("clear", "clear", "not_run"), 9),
+    _kyc("Jonah Wexley-Abara", "jonah.wa@example.net", "individual", "1972-03-08", "Kenya", "United Kingdom",
+         "Passport", "6648", "high", 76, "info_requested", ALEX, 11,
+         "Large initial deposit expected; source-of-funds documentation requested.",
+         (V, V, V, M), ("clear", "clear", "clear"), 11),
+    _kyc("Lucía Marenco", "lucia.marenco@example.com", "individual", "1993-06-25", "Mexico", "United States",
+         "Driver's licence", "9135", "medium", 44, "approved", ALEX, 13,
+         "Driver's licence and utility bill verified; moderate cross-border volume.",
+         (V, V, V, R), ("clear", "clear", "clear"), 13),
+    _kyc("Bramwell Coffee Roasters", "finance@bramwell.example.com", "business", None, "United Kingdom", "United Kingdom",
+         "Certificate of incorporation", "07BR", "low", 22, "approved", None, 16,
+         "Low-volume merchant; registry match confirmed, standard checks passed.",
+         (V, V, NR, NR), ("clear", "clear", "clear"), 16),
+    _kyc("Ivo Stanchev", "ivo.stanchev@example.org", "individual", "1984-12-14", "Bulgaria", "Bulgaria",
+         "National ID", "3071", "high", 91, "rejected", RILEY, 19,
+         "Document tampering suspected on ID image; IDV flagged for review.",
+         (R, V, V, NR), ("review", "clear", "clear"), 19),
+    _kyc("Harriet Oduya", "harriet.oduya@example.net", "individual", "1990-02-19", "Ghana", "Ireland",
+         "Passport", "1186", "medium", 58, "pending", None, 22,
+         "Name mismatch between ID and bank statement (maiden name). IDV result pending from provider.",
+         (V, R, V, NR), ("pending", "clear", "clear"), 22),
+    _kyc("Céleste Armitage", "celeste.a@example.com", "individual", "1998-08-04", "France", "France",
+         "National ID", "7402", "low", 30, "info_requested", None, 25,
+         "ID photo blurry; re-upload requested before IDV can run.",
+         (M, V, R, NR), ("not_run", "clear", "clear"), None),
+    _kyc("Northgate Ceramics Co", "accounts@northgate.example.com", "business", None, "Ireland", "Ireland",
+         "Certificate of incorporation", "52NC", "medium", 41, "approved", RILEY, 28,
+         "Business registry match confirmed; two beneficial owners verified.",
+         (V, V, NR, R), ("clear", "clear", "clear"), 27),
 ]
+KYC_FIRST_REF_NUMBER = 158
 
 # (customer_name, email, amount_cents, reason, status, days_ago, transaction_ref)
 SEED_REFUNDS = [
@@ -184,12 +264,14 @@ def seed(conn: sqlite3.Connection) -> None:
             [(n, e, hash_password(p), r, now_str()) for n, e, p, r in SEED_USERS],
         )
     if _table_empty(conn, "kyc_cases"):
-        conn.executemany(
-            "INSERT INTO kyc_cases (customer_name, email, risk_tier, status, assignee, submitted_at, notes)"
-            " VALUES (?, ?, ?, ?, ?, ?, ?)",
-            [(n, e, t, s, a, now_str(-timedelta(days=d, hours=i)), notes)
-             for i, (n, e, t, s, a, d, notes) in enumerate(SEED_KYC)],
-        )
+        for i, case in enumerate(SEED_KYC):
+            row = {k: v for k, v in case.items() if k not in ("days_ago", "checks_days_ago")}
+            row["case_ref"] = f"KYC-2026-{KYC_FIRST_REF_NUMBER - i:04d}"
+            row["submitted_at"] = now_str(-timedelta(days=case["days_ago"], hours=i))
+            row["checks_last_run_at"] = (None if case["checks_days_ago"] is None
+                                         else now_str(-timedelta(days=case["checks_days_ago"], hours=i - 1)))
+            cols = ", ".join(row)
+            conn.execute(f"INSERT INTO kyc_cases ({cols}) VALUES ({', '.join('?' * len(row))})", tuple(row.values()))
     if _table_empty(conn, "refunds"):
         conn.executemany(
             "INSERT INTO refunds (customer_name, email, amount_cents, currency, reason, status, requested_at,"
@@ -212,6 +294,12 @@ def init_db() -> None:
     conn = connect()
     try:
         conn.executescript(SCHEMA)
+        kyc_columns = {r[1] for r in conn.execute("PRAGMA table_info(kyc_cases)")}
+        if "case_ref" not in kyc_columns:
+            raise RuntimeError(
+                f"{db_path()} was created by an older version of this prototype (kyc_cases has no case_ref "
+                "column). Stop the server, delete that file, and start again to recreate and reseed it."
+            )
         seed(conn)
         conn.commit()
     finally:

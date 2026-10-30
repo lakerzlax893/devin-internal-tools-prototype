@@ -111,3 +111,26 @@ input:focus, textarea:focus, select:focus { outline: 2px solid #b8c6f5; border-c
 .flag-form .pct { width: 4.5rem; }
 .title-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .error-card { max-width: 640px; margin: 2rem auto; }
+
+/* KYC domain detail */
+.ref { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.75rem; color: var(--muted); }
+.ref-lg { font-size: 0.95rem; font-weight: 500; margin-left: 0.4rem; }
+.badge-lg { font-size: 0.95rem; padding: 3px 12px; }
+.table-dense th, .table-dense td { padding: 0.4rem 0.6rem; }
+.table .right { text-align: right; }
+.docs-incomplete { color: var(--danger); font-weight: 600; }
+.chk-clear, .doc-verified { background: #e1f5ea; color: #17673d; }
+.chk-review, .doc-missing { background: #fde4e4; color: #9b2c2c; }
+.chk-pending { background: #fff4d6; color: #8a5a00; }
+.chk-not_run, .doc-not_requested { background: #eceef2; color: #4b5565; }
+.doc-received { background: #e6edff; color: #2c47b3; }
+.panel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.panel h2 { margin-top: 0; }
+.panel-wide { grid-column: 1 / -1; }
+.panel h2 + .fields, .panel .table { margin-bottom: 0.8rem; }
+.panel .fields { grid-template-columns: 170px 1fr; }
+@media (max-width: 900px) { .panel-grid { grid-template-columns: 1fr; } .panel-wide { grid-column: auto; } }
+.sim-tag { font-size: 0.7rem; text-transform: uppercase; letter-spacing: .05em; background: #fff4d6; color: #8a5a00;
+  border: 1px solid #f3d9a4; padding: 1px 7px; border-radius: 999px; vertical-align: middle; }
+.sim-note { background: #fff7e6; border: 1px solid #f3d9a4; color: #7a5310; padding: 0.55rem 0.8rem; border-radius: 6px; font-size: 0.85rem; }
+.sim-inline { font-size: 0.85rem; color: #7a5310; margin: 0 0 0.6rem; }

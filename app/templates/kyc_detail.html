@@ -1,23 +1,74 @@
 {% extends "base.html" %}
 {% from "_filters.html" import history_table %}
-{% block title %}KYC case #{{ case.id }}{% endblock %}
+{% block title %}{{ case.case_ref }}{% endblock %}
 {% block content %}
 <p><a href="/kyc">← Back to queue</a></p>
-<h1>KYC case #{{ case.id }}: {{ case.customer_name }}</h1>
-<div class="detail-grid">
-  <div class="card">
+<div class="title-row">
+  <h1>{{ case.customer_name }} <span class="ref ref-lg">{{ case.case_ref }}</span></h1>
+  <span class="badge badge-lg status-{{ case.status }}" data-testid="status">{{ case.status|label }}</span>
+</div>
+{% if error %}<div class="flash flash-error" role="alert" data-testid="error">{{ error }}</div>{% endif %}
+
+<div class="panel-grid">
+  <section class="card panel">
+    <h2>Applicant profile</h2>
     <dl class="fields">
-      <dt>Customer</dt><dd>{{ case.customer_name }}</dd>
+      <dt>Legal name</dt><dd>{{ case.customer_name }}</dd>
+      <dt>Case ref</dt><dd><code>{{ case.case_ref }}</code></dd>
+      <dt>Entity type</dt><dd>{{ case.entity_type|label }}</dd>
+      {% if case.entity_type == 'individual' %}<dt>Date of birth</dt><dd>{{ case.date_of_birth or '—' }}</dd>{% endif %}
+      <dt>{{ 'Country of incorporation' if case.entity_type == 'business' else 'Nationality' }}</dt><dd>{{ case.nationality }}</dd>
+      <dt>Country of residence</dt><dd>{{ case.country_of_residence }}</dd>
       <dt>Email</dt><dd>{{ case.email }}</dd>
-      <dt>Risk tier</dt><dd><span class="badge risk-{{ case.risk_tier }}">{{ case.risk_tier|label }}</span></dd>
-      <dt>Status</dt><dd><span class="badge status-{{ case.status }}" data-testid="status">{{ case.status|label }}</span></dd>
-      <dt>Assignee</dt><dd>{{ case.assignee or '—' }}</dd>
+      <dt>ID document</dt><dd>{{ case.id_document_type }} · ending <code>{{ case.id_document_last4 }}</code></dd>
       <dt>Submitted</dt><dd>{{ case.submitted_at }} UTC</dd>
-      <dt>Notes</dt><dd>{{ case.notes or '—' }}</dd>
+      <dt>Analyst</dt><dd>{{ case.assignee or 'Unassigned' }}</dd>
+      <dt>Status</dt><dd><span class="badge status-{{ case.status }}">{{ case.status|label }}</span></dd>
     </dl>
-  </div>
-  <div class="card">
-    <h2>Take action</h2>
+  </section>
+
+  <section class="card panel">
+    <h2>Submitted information <span class="muted small">{{ docs_done }}/{{ doc_total }} verified or received</span></h2>
+    <table class="table table-dense">
+      <tbody>
+      {% for name, st in documents %}
+      <tr><td>{{ name }}</td><td class="right"><span class="badge doc-{{ st }}">{{ st|label }}</span></td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="card panel">
+    <h2>External checks <span class="sim-tag">simulated</span></h2>
+    <table class="table table-dense" data-testid="checks">
+      <thead><tr><th>Check</th><th>Status</th><th>Last run (UTC)</th></tr></thead>
+      <tbody>
+      {% for name, st in checks %}
+      <tr><td>{{ name }}</td><td><span class="badge chk-{{ st }}">{{ st|label }}</span></td><td class="nowrap">{{ case.checks_last_run_at or 'Never' }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <p class="sim-note">Simulated checks for this prototype — no external provider is called. In production this panel calls the verification/screening provider and records its reference.</p>
+    <form method="post" action="/kyc/{{ case.id }}/run-checks">
+      <button type="submit" class="btn btn-primary">{{ 'Re-run checks' if case.checks_last_run_at else 'Run checks' }}</button>
+    </form>
+  </section>
+
+  <section class="card panel">
+    <h2>Risk assessment</h2>
+    <dl class="fields">
+      <dt>Risk tier</dt><dd><span class="badge risk-{{ case.risk_tier }}">{{ case.risk_tier|label }}</span></dd>
+      <dt>Risk score</dt><dd><strong>{{ case.risk_score }}</strong> / 100 <span class="muted small">(low &lt; 40, medium 40–69, high 70+)</span></dd>
+      <dt>Analyst notes / risk rationale</dt><dd>{{ case.notes or '—' }}</dd>
+    </dl>
+
+  </section>
+
+  <section class="card panel panel-wide">
+    <h2>Decision</h2>
+    {% if checks_incomplete %}
+    <p class="note small">Approval is unavailable until all external checks have completed (none Not run or Pending). Reject and Request info are always available.</p>
+    {% endif %}
     <form method="post" action="/kyc/{{ case.id }}/action" class="stack">
       <label>Comment (optional)
         <textarea name="comment" rows="3" placeholder="Reason or note for the audit log"></textarea>
@@ -28,7 +79,7 @@
         <button type="submit" name="action" value="request_info" class="btn">Request info</button>
       </div>
     </form>
-  </div>
+  </section>
 </div>
 {{ history_table(history) }}
 {% endblock %}

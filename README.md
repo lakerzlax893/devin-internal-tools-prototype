@@ -19,12 +19,12 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-Open **http://127.0.0.1:8000**. On first startup the app creates `app.db` in the repo root and seeds it (tables use `CREATE TABLE IF NOT EXISTS` and seeding only fills empty tables, so restarts keep your changes). To reset to fresh demo data, stop the server and delete `app.db`.
+Open **http://127.0.0.1:8000**. On first startup the app creates `app.db` in the repo root and seeds it (tables use `CREATE TABLE IF NOT EXISTS` and seeding only fills empty tables, so restarts keep your changes). To reset to fresh demo data, stop the server and delete `app.db`. **Upgrading from an earlier checkout:** the KYC table gained new columns, so an `app.db` created by an older version must be deleted once (the app refuses to start against it with a message saying so); it is recreated and reseeded on the next start.
 
 | Login | Password | Role | Can | Cannot |
 |---|---|---|---|---|
-| `reviewer@example.com` (Riley Reviewer) | `demo-reviewer` | reviewer | Use the KYC queue and refunds dashboard (list, filter, view, approve/reject/etc.); view feature flags read-only; view the audit log | Change feature flags (HTTP 403); download the audit CSV (HTTP 403) |
-| `admin@example.com` (Alex Admin) | `demo-admin` | admin | Everything the reviewer can, plus change feature flags and download the audit CSV | — |
+| `reviewer@example.com` (Riley Chen) | `demo-reviewer` | reviewer | Use the KYC queue and refunds dashboard (list, filter, view, approve/reject/etc.); view feature flags read-only; view the audit log | Change feature flags (HTTP 403); download the audit CSV (HTTP 403) |
+| `admin@example.com` (Alex Morgan) | `demo-admin` | admin | Everything the reviewer can, plus change feature flags and download the audit CSV | — |
 
 **Demo auth notice:** passwords are stored as salted PBKDF2-SHA256 hashes using Python's standard-library `hashlib`, and sessions are signed cookies (Starlette `SessionMiddleware`). The default signing key is a hard-coded development value; set `SESSION_SECRET` to override it. There is no CSRF token, rate limiting, lockout, or MFA. This is not production authentication.
 
@@ -33,11 +33,12 @@ Optional environment variables: `APP_DB_PATH` (SQLite file path, default `./app.
 ## 3. Demo walk-through
 
 1. Open http://127.0.0.1:8000 — you are redirected to `/login`. Sign in as **reviewer@example.com / demo-reviewer**. The home page shows the "New internal tools platform — pilot" banner and three tool cards with live counts.
-2. Click **KYC review queue** (or the *Pending* filter), open a pending case, type a comment, and click **Approve**. The detail page shows the new status and the case's audit history. Open **Audit log** — the newest entry shows you, module `kyc`, `pending → approved`, and your comment.
-3. Open **Refunds**, note the four summary figures, open a pending refund and click **Approve**. Back on the dashboard, *Total approved* has increased by that amount and *Pending refunds* has dropped by one. (Click **Mark paid** on the same refund to see *Total paid* change too.)
-4. Open **Feature flags**. As a reviewer the list is read-only with a note that changes are admin-only. The server enforces this too — e.g. `curl -X POST` to `/flags/1/update` with a reviewer session returns **403 Forbidden** and writes nothing. Visiting http://127.0.0.1:8000/admin/audit.csv also returns 403.
-5. Click **Log out**, sign in as **admin@example.com / demo-admin**, open **Feature flags**, and click **Turn OFF** on `homepage_announcement`. Go **Home** — the banner is gone. Turn it back **ON** and the banner reappears. (You can also set ON/OFF and a rollout % with the Save form; rollout must be 0–100.)
-6. Open **Audit log**: every action above is listed newest-first with actor, module, entity, before → after, and comment. Filter by module with the pills (`?module=kyc|refunds|flags|auth`). As admin, click **Download CSV** to export the full log.
+2. Click **KYC review queue** (or the *Pending* filter). Each row shows the case ref, applicant type, risk tier and score, IDV and screening badges (simulated), and how many of the four checklist documents are in. Open **Marisol Vantreese (KYC-2026-0158)** — all checks are Clear — type a comment, and click **Approve**. The detail page shows the new status and the case's audit history. Open **Audit log** — the newest entry shows you, module `kyc`, `pending → approved`, and your comment.
+3. Still in the KYC queue, open **Quill & Fern Studio LLC (KYC-2026-0156)**: in the *External checks (simulated)* panel, sanctions screening is **Not run**. Click **Approve** — it is refused with "External checks must be completed before approval." and nothing changes. Click **Run checks**: the Not run check becomes **Clear**, *Last run* updates, and one `checks_run` entry appears in the case's audit history. Now **Approve** succeeds. (On **Dorian Okafor-Lind (KYC-2026-0157)**, PEP & adverse media is **Review**; running checks again leaves it at Review — a real hit does not clear itself.) Run checks is a simulated stand-in for calling an IDV/screening provider API: the workflow (trigger, status change, approval gate, audit) is real; the provider response is stubbed in-app.
+4. Open **Refunds**, note the four summary figures, open a pending refund and click **Approve**. Back on the dashboard, *Total approved* has increased by that amount and *Pending refunds* has dropped by one. (Click **Mark paid** on the same refund to see *Total paid* change too.)
+5. Open **Feature flags**. As a reviewer the list is read-only with a note that changes are admin-only. The server enforces this too — e.g. `curl -X POST` to `/flags/1/update` with a reviewer session returns **403 Forbidden** and writes nothing. Visiting http://127.0.0.1:8000/admin/audit.csv also returns 403.
+6. Click **Log out**, sign in as **admin@example.com / demo-admin**, open **Feature flags**, and click **Turn OFF** on `homepage_announcement`. Go **Home** — the banner is gone. Turn it back **ON** and the banner reappears. (You can also set ON/OFF and a rollout % with the Save form; rollout must be 0–100.)
+7. Open **Audit log**: every action above is listed newest-first with actor, module, entity, before → after, and comment. Filter by module with the pills (`?module=kyc|refunds|flags|auth`). As admin, click **Download CSV** to export the full log.
 
 ## 4. How the platform is structured
 
@@ -49,7 +50,7 @@ app/
   audit.py       log_audit() — the single audit helper
   templating.py  shared Jinja2 environment, filters (dollars, label, date), render() and flash()
   routers/
-    kyc.py       Module 1: /kyc, /kyc/{id}, POST /kyc/{id}/action
+    kyc.py       Module 1: /kyc, /kyc/{id}, POST /kyc/{id}/run-checks (simulated), POST /kyc/{id}/action
     refunds.py   Module 2: /refunds, /refunds/{id}, POST /refunds/{id}/action
     flags.py     Module 3: /flags, POST /flags/{id}/update (admin only)
     admin.py     /audit (all roles), /admin/audit.csv (admin only)
@@ -85,6 +86,7 @@ This is a pattern prototype. The following are intentionally out of scope; they 
 | **Identity (SSO)** | No SSO / SAML / OIDC, no Microsoft Entra ID integration, no MFA. No password reset, user registration, or user-management UI — only the two seeded users. Production would replace `auth.py`'s login with Entra ID OIDC and map groups to roles; `current_user` / `require_admin` stay as the interface. |
 | **Database** | No production database (no Postgres) and no migrations framework. SQLite with `CREATE TABLE IF NOT EXISTS` is enough to prove the pattern; production would move to Postgres with migrations. |
 | **Hosting / deploy** | No hosting, deployment pipeline, Docker, or cloud configuration beyond the local run command. |
+| **IDV / screening provider** | No real IDV / sanctions-screening provider integration — checks are simulated in-app; production wires the External checks panel to the provider's API and stores its reference. |
 | **Connectors** | No external connectors or APIs: no email sending, no payment processing (refunds are status changes only), no identity-verification service. No file uploads. |
 | **Compliance review** | No security review, CSRF protection, audit-log immutability/retention controls, data-retention policy, or access reviews — all required before handling real customer data. |
 | **Client architecture** | No JavaScript framework, no API-only backend, no mobile app. Server-rendered HTML is the deliberate choice for internal tools. |
@@ -119,5 +121,8 @@ Each test runs against a fresh temporary SQLite file (via `APP_DB_PATH`) using F
 3. A reviewer POSTing a flag update gets 403, the flag row is unchanged, and no audit entry is written.
 4. An admin toggling a flag succeeds and creates exactly one audit entry recording before/after enabled state and rollout.
 5. An unauthenticated request to `/kyc` redirects to `/login`.
+6. Running (simulated) checks on a case with a Not run check sets it to Clear, sets `checks_last_run_at`, and writes exactly one `checks_run` audit entry.
+7. A check seeded as Review is still Review after running checks.
+8. Approving a case with a Not run check is refused (400, status unchanged, no decision audit entry, error message shown); approving the same case after running checks succeeds.
 
-Extra checks: the audit CSV is admin-only and has a header row; the home-page banner follows the `homepage_announcement` flag; out-of-range rollout values are rejected without an audit entry; a bad login re-renders the form with an error.
+Extra checks: Reject is allowed while checks are incomplete; the audit CSV is admin-only and has a header row; the home-page banner follows the `homepage_announcement` flag; out-of-range rollout values are rejected without an audit entry; a bad login re-renders the form with an error.

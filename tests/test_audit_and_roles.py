@@ -166,3 +166,75 @@ def test_bad_login_shows_error(client):
     r = client.post("/login", data={"email": "reviewer@example.com", "password": "wrong"})
     assert r.status_code == 401
     assert "Invalid email or password" in r.text
+
+
+# KYC external checks (simulated) and the approval rule.
+APPROVAL_BLOCKED = "External checks must be completed before approval."
+CHECK_COLUMNS = ("idv_status", "sanctions_status", "pep_status")
+
+
+def pending_case_with(db_file, check_value):
+    return query(db_file, "SELECT * FROM kyc_cases WHERE status = 'pending' AND ? IN "
+                          "(idv_status, sanctions_status, pep_status) ORDER BY id LIMIT 1", (check_value,))[0]
+
+
+def kyc_case(db_file, case_id):
+    return query(db_file, "SELECT * FROM kyc_cases WHERE id = ?", (case_id,))[0]
+
+
+def test_run_checks_clears_not_run_and_writes_one_audit_entry(client, db_file):
+    login(client, REVIEWER)
+    case = pending_case_with(db_file, "not_run")
+    not_run_cols = [c for c in CHECK_COLUMNS if case[c] == "not_run"]
+
+    r = client.post(f"/kyc/{case['id']}/run-checks", follow_redirects=False)
+    assert r.status_code == 303 and r.headers["location"] == f"/kyc/{case['id']}"
+
+    after = kyc_case(db_file, case["id"])
+    assert all(after[c] == "clear" for c in not_run_cols)
+    assert after["checks_last_run_at"] and after["checks_last_run_at"] != case["checks_last_run_at"]
+    assert after["status"] == case["status"]
+    entries = audit_for(db_file, "kyc_case", case["id"])
+    assert len(entries) == 1
+    e = entries[0]
+    assert (e["module"], e["action"], e["actor_email"], e["comment"]) == ("kyc", "checks_run", "reviewer@example.com", None)
+    assert "not_run" in e["before_value"] and "not_run" not in e["after_value"]
+
+
+def test_review_hit_survives_run_checks(client, db_file):
+    login(client, REVIEWER)
+    case = pending_case_with(db_file, "review")
+    review_cols = [c for c in CHECK_COLUMNS if case[c] == "review"]
+
+    client.post(f"/kyc/{case['id']}/run-checks")
+
+    after = kyc_case(db_file, case["id"])
+    assert all(after[c] == "review" for c in review_cols)
+    entries = audit_for(db_file, "kyc_case", case["id"])
+    assert len(entries) == 1 and "review" in entries[0]["after_value"]
+
+
+def test_approval_blocked_until_checks_complete(client, db_file):
+    login(client, REVIEWER)
+    case = pending_case_with(db_file, "not_run")
+
+    r = client.post(f"/kyc/{case['id']}/action", data={"action": "approve"}, follow_redirects=False)
+    assert r.status_code == 400
+    assert APPROVAL_BLOCKED in r.text
+    assert kyc_case(db_file, case["id"])["status"] == "pending"
+    assert audit_for(db_file, "kyc_case", case["id"]) == []
+
+    client.post(f"/kyc/{case['id']}/run-checks")
+    r = client.post(f"/kyc/{case['id']}/action", data={"action": "approve"}, follow_redirects=False)
+    assert r.status_code == 303
+    assert kyc_case(db_file, case["id"])["status"] == "approved"
+    actions = [e["action"] for e in audit_for(db_file, "kyc_case", case["id"])]
+    assert actions == ["checks_run", "approve"]
+
+
+def test_reject_allowed_while_checks_incomplete(client, db_file):
+    login(client, REVIEWER)
+    case = pending_case_with(db_file, "pending")
+    r = client.post(f"/kyc/{case['id']}/action", data={"action": "reject"}, follow_redirects=False)
+    assert r.status_code == 303
+    assert kyc_case(db_file, case["id"])["status"] == "rejected"
